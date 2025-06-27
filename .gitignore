@@ -1,0 +1,12 @@
+data/raw/
+
+.idea/
+
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+.venv/
+
+.pytest_cache/

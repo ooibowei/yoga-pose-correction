@@ -29,40 +29,26 @@ def rotate_keypoints(arr, angle_range):
     cos_theta = np.cos(angle)
     sin_theta = np.sin(angle)
     rotation_matrix = np.array([[cos_theta, -sin_theta], [sin_theta, cos_theta]])
-
     ctr = np.mean(arr[:, :2], axis=0)
-    arr[:, :2] = ((arr[:, :2] - ctr) @ rotation_matrix) + ctr
-    return arr
 
-def dropout_keypoints(arr, dropout_prob):
-    """
-    Drop each keypoint with probability dropout_prob to simulate missing keypoints
-    :param arr: Array of keypoints
-    :type arr: numpy.ndarray of shape (33, 4)
-    :param dropout_prob: Probability of dropout
-    :type dropout_prob: float
-    :return: Array of keypoints with dropout applied
-    :rtype: numpy.ndarray of shape (33, 4)
-    """
-    drops = np.random.rand(33) < dropout_prob
-    arr[drops] = 0
-    return arr
+    rotated = arr.copy()
+    rotated[:, :2] = ((arr[:, :2] - ctr) @ rotation_matrix) + ctr
+    return rotated
 
 x_train = pd.read_parquet('data/processed/x_train.parquet')
-y_train = pd.read_parquet('data/processed/y_train.parquet')
+y_train = pd.read_parquet('data/processed/y_train.parquet')['label']
 
 rows_aug = []
 labels_aug = []
 for i in range(len(x_train)):
-    arr = x_train.iloc[i].values.reshape((33, 4))
+    x = x_train.iloc[i].values.reshape((33, 4))
     label = y_train.iloc[i]
 
     for j in range(3):
-        arr = jitter_keypoints(arr, 0.01)
-        arr = rotate_keypoints(arr, 10)
-        arr = dropout_keypoints(arr, 0.05)
-        arr_norm = normalise_keypoints(arr)
-        rows_aug.append(arr_norm.flatten().tolist())
+        x_aug = jitter_keypoints(x, 0.01)
+        x_aug = rotate_keypoints(x_aug, 10)
+        x_aug_norm = normalise_keypoints(x_aug)
+        rows_aug.append(x_aug_norm.flatten().tolist())
         labels_aug.append(label)
 
 x_aug = pd.DataFrame(rows_aug, columns=x_train.columns)
@@ -102,5 +88,19 @@ def translate_keypoints(arr, trans_range):
     dx, dy = np.random.uniform(-trans_range, trans_range, 2)
     arr[:,0] += dx
     arr[:,1] += dy
+    return arr
+
+def dropout_keypoints(arr, dropout_prob):
+    """
+    Drop each keypoint with probability dropout_prob to simulate missing keypoints
+    :param arr: Array of keypoints
+    :type arr: numpy.ndarray of shape (33, 4)
+    :param dropout_prob: Probability of dropout
+    :type dropout_prob: float
+    :return: Array of keypoints with dropout applied
+    :rtype: numpy.ndarray of shape (33, 4)
+    """
+    drops = np.random.rand(33) < dropout_prob
+    arr[drops] = 0
     return arr
 '''

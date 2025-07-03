@@ -4,11 +4,11 @@ import torch.nn.functional as F
 import pandas as pd
 from sklearn.metrics import f1_score
 from sklearn.preprocessing import LabelEncoder
-from sklearn.linear_model import LogisticRegression
 from sklearn.preprocessing import StandardScaler
+from torch.utils.data import TensorDataset, DataLoader
+from sklearn.linear_model import LogisticRegression
 from sklearn.ensemble import RandomForestClassifier
 from xgboost import XGBClassifier
-from torch.utils.data import TensorDataset, DataLoader
 
 x_train_aug = pd.read_parquet('data/processed/x_train_aug.parquet')
 x_val = pd.read_parquet('data/processed/x_val.parquet')

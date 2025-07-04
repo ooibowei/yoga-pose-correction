@@ -32,7 +32,7 @@ print('Random Forest F1', f1_score(y_val, yhat_rf, average='macro'))
 
 class Net(nn.Module):
     def __init__(self, input_size=132, num_classes=82):
-        super(Net, self).__init__()
+        super().__init__()
         self.fc1 = nn.Linear(input_size, 256)
         self.fc2 = nn.Linear(256, 128)
         self.output = nn.Linear(128, num_classes)

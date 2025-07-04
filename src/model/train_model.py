@@ -28,7 +28,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 class Net(nn.Module):
     def __init__(self, input_size=132, num_classes=82, dropout=0.2, hidden_dims=[256, 128]):
-        super(Net, self).__init__()
+        super().__init__()
 
         layers = []
         in_dim = input_size
@@ -215,6 +215,7 @@ for epoch in range(max_epochs):
     train_loss, train_f1 = train_loop(train_loader, model_nn, loss_fn, optimizer)
     val_loss, val_f1 = test_loop(val_loader, model_nn, loss_fn)
     scheduler.step(val_f1)
+    print(f'Epoch {epoch+1}, {val_f1:.4f}')
 
     if val_f1 > best_val_f1:
         best_val_f1 = val_f1

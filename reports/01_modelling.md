@@ -28,21 +28,22 @@ To improve model generalisability and robustness, we augmented the training set 
 
 ## Hyperparameter Tuning 
 
-The Optuna framework was used to optimise the FFN hyperparameters by maximising the macro F1 score on the validation set. The following hyperparameters were tuned with 100 max_epochs and early stopping (patience 10). The best trial returned a macro F1 score of 0.875
+The Optuna framework was used to optimise the FFN hyperparameters by maximising the macro F1 score on the validation set. The following hyperparameters were tuned with 100 max_epochs and early stopping (patience 10). The best trial returned a macro F1 score of 0.884
   
   | Hyperparameter                         | Range of Values           | Optimal Value |
   |----------------------------------------|---------------------------|---------------|
-  | Learning rate                          | Between 1e-5 and 1e-2     | 0.000986      |  
-| Scheduler factor                       | [0.1, 0.2, 0.3, 0.4, 0.5] | 0.1           |
-| Patience                               | Between 3 and 10          | 7             |
+  | Learning rate                          | Between 1e-5 and 1e-2     | 0.005327      |  
+| Scheduler factor                       | [0.1, 0.2, 0.3, 0.4, 0.5] | 0.3           |
+| Patience                               | Between 3 and 10          | 5             |
 | Batch size                             | [16, 32, 64, 128]         | 128           |
-| Dropout rate                           | Between 0.1 and 0.5       | 0.4358        |
-| Weight decay                           | Between 1e-5 and 1e-2     | 1.0085        |
-| Adam beta1                             | Between 0.8 and 0.99      | 0.9401        |
-| Adam beta2                             | Between 0.9 and 0.9999    | 0.9408        |  
+| Dropout rate                           | Between 0.1 and 0.5       | 0.3826        |
+| Weight decay                           | Between 1e-5 and 1e-2     | 3.1165e-5     |
+| Adam beta1                             | Between 0.8 and 0.99      | 0.8031        |
+| Adam beta2                             | Between 0.9 and 0.9999    | 0.9176        |  
 | Number of hidden layers                | Between 1 and 5           | 2             |
-| Number of dimensions each hidden layer | [64, 128, 256, 512]       | 256, 512      |
+| Number of dimensions each hidden layer | [64, 128, 256, 512]       | 256, 256      |
+| Batch norm                             | [True, False]             | True          |
 
-We plot the loss and macro F1 score of the best trial. Although the training and validation losses diverge (sign of potential overfitting), the macro F1 score reveals that the model did not overfit the data
+We plot the loss and macro F1 score of the best trial. Although the training and validation losses diverged (sign of potential overfitting), the macro F1 score revealed that the model continued to improve without overfitting the data
 
 ![loss_f1](images/loss_f1.png)

@@ -8,7 +8,7 @@ import seaborn as sns
 from sklearn.metrics import f1_score, confusion_matrix, classification_report
 from torch.utils.data import TensorDataset, DataLoader
 
-model_state = torch.load('models/best_model_state.pt', map_location=torch.device('cpu'))
+model_state = torch.load('models/best_model_state.pt', map_location=torch.device('cuda'))
 model_metadata = joblib.load('models/model_metadata.joblib')
 scaler = joblib.load('models/scaler.joblib')
 le = joblib.load('models/label_encoder.joblib')
@@ -42,12 +42,14 @@ def test_loop(dataloader, model, loss_fn):
     return loss_test/size_test, f1_test, labels_test, yhat_test
 
 class Net(nn.Module):
-    def __init__(self, input_size, num_classes, dropout, hidden_dims):
+    def __init__(self, input_size, num_classes, dropout, hidden_dims, batchnorm):
         super().__init__()
         layers = []
         in_dim = input_size
         for out_dim in hidden_dims:
             layers.append(nn.Linear(in_dim, out_dim))
+            if batchnorm:
+                layers.append(nn.BatchNorm1d(out_dim))
             layers.append(nn.ReLU())
             layers.append(nn.Dropout(dropout))
             in_dim = out_dim
@@ -62,12 +64,13 @@ model_nn = Net(
     num_classes=model_metadata['num_classes'],
     dropout=model_metadata['dropout'],
     hidden_dims=model_metadata['hidden_dims'],
-)
+    batchnorm=model_metadata['batchnorm']
+).to(device)
 model_nn.load_state_dict(model_state)
 model_nn.eval()
 loss_fn = nn.CrossEntropyLoss()
 loss_test, f1_test, labels_test, yhat_test = test_loop(test_loader, model_nn, loss_fn)
-print(f"Test F1 Score: {f1_test:.4f}") # Final test F1 score is 0.867
+print(f"Test F1 Score: {f1_test:.4f}") # Final test F1 score is 0.866
 
 # Lowest F1 scores
 report = classification_report(labels_test, yhat_test, target_names=le.classes_, output_dict=True)
@@ -98,16 +101,16 @@ misclassified_poses['Pair'] = (misclassified_poses['True'] + ', ' + misclassifie
 
 plt.figure(figsize=(12, 6))
 sns.barplot(data=misclassified_poses, x='Normalised', y='Pair')
-plt.title("Top 10 Normalized Misclassified Pose Pairs")
-plt.xlabel("Normalized Confusion Rate")
+plt.title("Top 10 Normalised Misclassified Pose Pairs")
+plt.xlabel("Normalised Confusion Rate")
 plt.ylabel("True, Predicted")
 plt.tight_layout()
 plt.savefig("reports/images/misclassified_poses.png")
 plt.show()
 
 # Misclassified Noose -> Garland
-img_true = plt.imread("data/raw/Noose_Pose_or_Pasasana_/Noose_Pose_or_Pasasana__image_5.jpg")
-img_pred = plt.imread('data/raw/Garland_Pose_or_Malasana_/Garland_Pose_or_Malasana__image_113.jpg')
+img_true = plt.imread("data/raw/Noose_Pose_or_Pasasana_/Noose_Pose_or_Pasasana__image_21.jpg")
+img_pred = plt.imread('data/raw/Garland_Pose_or_Malasana_/Garland_Pose_or_Malasana__image_273.jpg')
 fig, axs = plt.subplots(1, 2, figsize=(12, 6))
 axs[0].imshow(img_true)
 axs[0].axis('off')
@@ -120,17 +123,17 @@ plt.tight_layout()
 plt.savefig('reports/images/noose_garland.png')
 plt.show()
 
-# Misclassified Heron -> Boat
-img_true = plt.imread("data/raw/Heron_Pose_or_Krounchasana_/Heron_Pose_or_Krounchasana__image_1.jpg")
-img_pred = plt.imread('data/raw/Boat_Pose_or_Paripurna_Navasana_/Boat_Pose_or_Paripurna_Navasana__image_11.jpg')
+# Misclassified Dolphin -> Downward Facing Dog
+img_true = plt.imread("data/raw/Dolphin_Pose_or_Ardha_Pincha_Mayurasana_/Dolphin_Pose_or_Ardha_Pincha_Mayurasana__image_3.jpg")
+img_pred = plt.imread('data/raw/Downward-Facing_Dog_pose_or_Adho_Mukha_Svanasana_/Downward-Facing_Dog_pose_or_Adho_Mukha_Svanasana__image_2.jpg')
 fig, axs = plt.subplots(1, 2, figsize=(12, 6))
 axs[0].imshow(img_true)
 axs[0].axis('off')
-axs[0].set_title("True Pose: Heron Pose")
+axs[0].set_title("True Pose: Dolphin Pose")
 axs[1].imshow(img_pred)
 axs[1].axis('off')
-axs[1].set_title("Misclassified as: Boat Pose")
+axs[1].set_title("Misclassified as: Downward Facing Dog Pose")
 plt.suptitle("Comparison of True and Misclassified Poses")
 plt.tight_layout()
-plt.savefig('reports/images/heron_boat.png')
+plt.savefig('reports/images/dolphin_downwarddog.png')
 plt.show()

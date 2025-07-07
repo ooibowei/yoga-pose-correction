@@ -27,13 +27,15 @@ val_dataset = TensorDataset(x_val_tensor, y_val_tensor)
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 class Net(nn.Module):
-    def __init__(self, input_size=132, num_classes=82, dropout=0.2, hidden_dims=[256, 128]):
+    def __init__(self, input_size=132, num_classes=82, dropout=0.2, hidden_dims=[256, 128], batchnorm=True):
         super().__init__()
 
         layers = []
         in_dim = input_size
         for out_dim in hidden_dims:
             layers.append(nn.Linear(in_dim, out_dim))
+            if batchnorm:
+                layers.append(nn.BatchNorm1d(out_dim))
             layers.append(nn.ReLU())
             layers.append(nn.Dropout(dropout))
             in_dim = out_dim
@@ -97,10 +99,11 @@ def objective(trial):
     beta2 = trial.suggest_float('beta2', 0.9, 0.9999)
     num_hidden_layers = trial.suggest_int('num_hidden_layers', 1, 5)
     hidden_dims = [trial.suggest_categorical(f"hidden_dim_{i}", [64, 128, 256, 512]) for i in range(num_hidden_layers)]
+    batchnorm = trial.suggest_categorical('batchnorm', [True, False])
 
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
     val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=True)
-    model_nn = Net(input_size=132, num_classes=82, dropout=dropout_rate, hidden_dims=hidden_dims).to(device)
+    model_nn = Net(input_size=132, num_classes=82, dropout=dropout_rate, hidden_dims=hidden_dims, batchnorm=batchnorm).to(device)
     loss_fn = nn.CrossEntropyLoss()
     optimizer = torch.optim.Adam(model_nn.parameters(), lr=lr, weight_decay=weight_decay, betas=(beta1, beta2))
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='max', factor=factor, patience=patience, min_lr=1e-6)
@@ -144,6 +147,8 @@ def objective(trial):
     trial.set_user_attr("val_f1s", val_f1s)
     trial.set_user_attr("lrs", lrs)
     trial.set_user_attr("epochs_trained", len(train_losses))
+    trial.set_user_attr("best_model_state", best_model_state)
+    trial.set_user_attr("model_metadata", {"input_size": 132, "num_classes": 82, "dropout": dropout_rate, "hidden_dims": hidden_dims, "batchnorm": batchnorm})
 
     model_nn.load_state_dict(best_model_state)
     final_val_loss, final_val_f1 = test_loop(val_loader, model_nn, loss_fn)
@@ -153,26 +158,27 @@ def objective(trial):
 study = optuna.create_study(direction='maximize')
 study.optimize(objective, n_trials=100, n_jobs=4)
 joblib.dump(study, "models/study.pkl")
-optuna_bundle = {'best_value': study.best_value, 'best_params': study.best_params, 'study': study, 'user_attrs': study.user_attrs}
+optuna_bundle = {'best_value': study.best_value, 'best_params': study.best_params, 'study': study, 'user_attrs': study.best_trial.user_attrs}
 joblib.dump(optuna_bundle, 'models/optuna_bundle.joblib')
 print("Best F1 Score:", study.best_value)
 print("Best Parameters:")
 for k, v in study.best_params.items():
     print(f"   {k}: {v}")
 """
-Best F1 = 0.875
+Best F1 = 0.884
 Best parameters  
-   factor: 0.1
-   patience: 7
-   lr: 0.000985655800431002
+   factor: 0.3
+   patience: 5
+   lr: 0.005326958856093651
    batch_size: 128
-   dropout_rate: 0.43576903523576654
-   weight_decay: 1.008463977584377e-06
-   beta1: 0.9401132856796786
-   beta2: 0.9407801128814276
+   dropout_rate: 0.3826266333412675
+   weight_decay: 3.1164952291770954e-05
+   beta1: 0.8030788847935819
+   beta2: 0.9176486151951548
    num_hidden_layers: 2
    hidden_dim_0: 256
-   hidden_dim_1: 512
+   hidden_dim_1: 256
+   batchnorm: True
 """
 
 epochs = range(study.best_trial.user_attrs["epochs_trained"])
@@ -197,6 +203,14 @@ plt.tight_layout()
 plt.savefig("reports/images/loss_f1.png")
 plt.show()
 
+best_model_state = study.best_trial.user_attrs['best_model_state']
+model_metadata = study.best_trial.user_attrs['model_metadata']
+torch.save(best_model_state, 'models/best_model_state.pt')
+joblib.dump(model_metadata, 'models/model_metadata.joblib')
+joblib.dump(scaler, 'models/scaler.joblib')
+joblib.dump(le, 'models/label_encoder.joblib')
+
+"""
 # Train and save final model
 best_params = study.best_params
 train_loader = DataLoader(train_dataset, batch_size=best_params["batch_size"], shuffle=True)
@@ -231,8 +245,36 @@ model_nn.load_state_dict(best_model_state)
 val_loss, val_f1 = test_loop(val_loader, model_nn, loss_fn)
 print(f"Best validation F1: {val_f1:.4f}")
 
+
+class Net(nn.Module):
+    def __init__(self, input_size, num_classes, dropout, hidden_dims, batchnorm):
+        super().__init__()
+        layers = []
+        in_dim = input_size
+        for out_dim in hidden_dims:
+            layers.append(nn.Linear(in_dim, out_dim))
+            if batchnorm:
+                layers.append(nn.BatchNorm1d(out_dim))
+            layers.append(nn.ReLU())
+            layers.append(nn.Dropout(dropout))
+            in_dim = out_dim
+        layers.append(nn.Linear(in_dim, num_classes))
+        self.net = nn.Sequential(*layers)
+
+    def forward(self, x):
+        return self.net(x)
+
+model_nn = Net(
+    input_size=model_metadata['input_size'],
+    num_classes=model_metadata['num_classes'],
+    dropout=model_metadata['dropout'],
+    hidden_dims=model_metadata['hidden_dims'],
+    batchnorm=model_metadata['batchnorm']
+)
+
 torch.save(best_model_state, 'models/best_model_state.pt')
 model_metadata = {"input_size": 132, "num_classes": 82, "dropout": best_params["dropout_rate"], "hidden_dims": hidden_dims}
 joblib.dump(model_metadata, 'models/model_metadata.joblib')
 joblib.dump(scaler, 'models/scaler.joblib')
 joblib.dump(le, 'models/label_encoder.joblib')
+"""

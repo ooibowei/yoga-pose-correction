@@ -37,7 +37,7 @@ def generate_keypoints(image, pose_landmarker):
     keypoints_arr_norm = normalise_keypoints(keypoints_arr)
     return keypoints_arr_norm
 
-def calculate_angle(a, b, c, vis_threshold=1):
+def calculate_angle(a, b, c, vis_threshold=0):
     """
     Calculate angle between three keypoints (a, b, c)
     :param a/b/c: keypoints each of the form (x, y, z, visibility)
@@ -60,7 +60,7 @@ def calculate_angle(a, b, c, vis_threshold=1):
     deg = np.degrees(deg_radian)
     return deg
 
-def calculate_horizontal_ref_angle(a, b, vis_threshold=1):
+def calculate_horizontal_ref_angle(a, b, vis_threshold=0):
     """
     Calculate angle between line segment (two keypoints a, b) and horizontal x-axis. Checks if a body part is tilted
     :param a/b: keypoints each of the form (x, y, z, visibility)
@@ -76,7 +76,7 @@ def calculate_horizontal_ref_angle(a, b, vis_threshold=1):
     dy = b[1] - a[1]
     return np.degrees(np.arctan2(dy, dx))
 
-def extract_joint_angles(keypoints_arr_norm, vis_threshold=1):
+def extract_joint_angles(keypoints_arr_norm, vis_threshold=0):
     """
     Extract a dictionary of pre-defined joint angles
     :param keypoints_arr_norm:
@@ -97,4 +97,4 @@ def extract_joint_angles(keypoints_arr_norm, vis_threshold=1):
     angles['head_tilt'] = calculate_angle(keypoints_arr_norm[0], keypoints_arr_norm[11], keypoints_arr_norm[12], vis_threshold)
     angles['shoulder_tilt'] = calculate_horizontal_ref_angle(keypoints_arr_norm[11], keypoints_arr_norm[12], vis_threshold)
     angles['hip_tilt'] = calculate_horizontal_ref_angle(keypoints_arr_norm[23], keypoints_arr_norm[24], vis_threshold)
-    return {k: v for k, v in angles.items() if v is not None} # Only return angles that are not None
+    return {k: v for k, v in angles.items() if v is not None}

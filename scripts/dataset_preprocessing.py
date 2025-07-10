@@ -8,7 +8,7 @@ import pandas as pd
 from mediapipe.tasks import python
 from mediapipe.tasks.python import vision
 from sklearn.model_selection import train_test_split
-from scripts.utils import generate_keypoints
+from scripts.utils import generate_keypoints, normalise_keypoints
 
 # Use heavy model to train pose classifier
 model_path = 'models/pose_landmarker_heavy.task'
@@ -29,7 +29,8 @@ for dirpath, dirnames, filenames in os.walk(data_dir):
         if image is None:
             continue
 
-        keypoints_arr_norm = generate_keypoints(image, pose_landmarker)
+        keypoints_arr = generate_keypoints(image, pose_landmarker)
+        keypoints_arr_norm = normalise_keypoints(keypoints_arr)
         if keypoints_arr_norm is None:
             continue
         pose_name = os.path.basename(dirpath)

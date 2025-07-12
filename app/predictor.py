@@ -1,12 +1,13 @@
 import joblib
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 
-model_state = torch.load('models/best_model_state.pt', map_location=torch.device('cuda'))
+device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+model_state = torch.load('models/best_model_state.pt', map_location=device)
 model_metadata = joblib.load('models/model_metadata.joblib')
 scaler = joblib.load('models/scaler.joblib')
 le = joblib.load('models/label_encoder.joblib')
-device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 class Net(nn.Module):
     def __init__(self, input_size, num_classes, dropout, hidden_dims, batchnorm):
@@ -42,6 +43,8 @@ def predict_pose(keypoints_norm):
     model_nn.eval()
     with torch.no_grad():
         logits = model_nn(x_tensor)
+        prob = F.softmax(logits, dim=1)
         predicted_idx = logits.argmax(dim=1).item()
+        predicted_prob = prob[0, predicted_idx].item()
         predicted_pose = le.inverse_transform([predicted_idx])[0]
-    return predicted_pose
+    return predicted_pose, predicted_prob

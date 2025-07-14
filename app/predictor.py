@@ -2,6 +2,9 @@ import joblib
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+import warnings
+
+warnings.filterwarnings("ignore", category=UserWarning, message="X does not have valid feature names*")
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 model_state = torch.load('models/best_model_state.pt', map_location=device)

@@ -1,8 +1,9 @@
 import cv2
 import argparse
-import asyncio
-import pyttsx3
-import subprocess
+from TTS.api import TTS
+import uuid
+import os
+import pygame
 import threading
 import queue
 from mediapipe.tasks import python
@@ -37,15 +38,19 @@ def process_frame(frame, pose_landmarker, pose):
     annotated_image = visualise_pose_corrections(frame.copy(), keypoints, corrections, target_pose, target_prob)
     return annotated_image, corrections_text
 
-def speak_text(text):
-    subprocess.run(['espeak', text])
-
 def speech_worker(speech_queue):
+    pygame.mixer.init()
+    tts = TTS(model_name="tts_models/en/ljspeech/tacotron2-DDC", progress_bar=False)
     last_text = None
     while True:
         text = speech_queue.get()
         if text != last_text and text:
-            speak_text(text)
+            filename = f"temp_{uuid.uuid4().hex}.wav"
+            tts.tts_to_file(text=text, file_path=filename)
+            pygame.mixer.Sound(filename).play()
+            while pygame.mixer.get_busy():
+                pygame.time.Clock().tick(10)
+            os.remove(filename)
             last_text = text
         speech_queue.task_done()
 
@@ -66,14 +71,19 @@ def main(source, pose):
 
     elif source == 'video':
         cap = cv2.VideoCapture("data/warrior2.mp4")
+        warmup_frames = 30
+        frame_count = 0
         while True:
             ret, frame = cap.read()
             if not ret:
                 break
-            annotated_image, corrections_text = process_frame(frame, pose_landmarker, pose)
-
-            if not speech_queue.full():
-                speech_queue.put(corrections_text)
+            frame_count += 1
+            if frame_count > warmup_frames:
+                annotated_image, corrections_text = process_frame(frame, pose_landmarker, pose)
+                if not speech_queue.full():
+                    speech_queue.put(corrections_text)
+            else:
+                annotated_image = frame
             cv2.imshow("Pose Correction Video", annotated_image)
             if cv2.waitKey(1) & 0xFF == ord('q'):
                 break
@@ -82,14 +92,19 @@ def main(source, pose):
 
     elif source == 'webcam':
         cap = cv2.VideoCapture(0)
+        warmup_frames = 30
+        frame_count = 0
         while True:
             ret, frame = cap.read()
             if not ret:
                 break
-            annotated_image, corrections_text = process_frame(frame, pose_landmarker, pose)
-
-            if not speech_queue.full():
-                speech_queue.put(corrections_text)
+            frame_count += 1
+            if frame_count > warmup_frames:
+                annotated_image, corrections_text = process_frame(frame, pose_landmarker, pose)
+                if not speech_queue.full():
+                    speech_queue.put(corrections_text)
+            else:
+                annotated_image = frame
             cv2.imshow("Pose Correction Video", annotated_image)
             if cv2.waitKey(1) & 0xFF == ord('q'):
                 break

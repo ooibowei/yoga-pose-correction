@@ -13,12 +13,11 @@ from app.visualiser import visualise_pose_corrections
 from app.predictor import predict_pose
 from scripts.utils import generate_keypoints, normalise_keypoints
 
-def init_pose_landmarker():
-    model_path = 'models/pose_landmarker_lite.task'
-    base_options = python.BaseOptions(model_asset_path=model_path)
-    options = vision.PoseLandmarkerOptions(base_options=base_options)
-    pose_landmarker = vision.PoseLandmarker.create_from_options(options)
-    return pose_landmarker
+model_path = 'models/pose_landmarker_lite.task'
+base_options = python.BaseOptions(model_asset_path=model_path)
+options = vision.PoseLandmarkerOptions(base_options=base_options)
+pose_landmarker = vision.PoseLandmarker.create_from_options(options)
+tts = TTS(model_name='tts_models/en/ljspeech/glow-tts', progress_bar=False)
 
 def process_frame(frame, pose_landmarker, pose):
     keypoints = generate_keypoints(frame, pose_landmarker)
@@ -40,7 +39,6 @@ def process_frame(frame, pose_landmarker, pose):
 
 def speech_worker(speech_queue):
     pygame.mixer.init()
-    tts = TTS(model_name="tts_models/en/ljspeech/tacotron2-DDC", progress_bar=False)
     last_text = None
     while True:
         text = speech_queue.get()
@@ -54,14 +52,26 @@ def speech_worker(speech_queue):
             last_text = text
         speech_queue.task_done()
 
-def main(source, pose):
-    pose_landmarker = init_pose_landmarker()
+def main(source, pose, filepath):
+    """
+    Show pose corrections on input image/video/webcam
+    :param source: Type of input source, one of ['image', 'video', 'webcam']
+    :type source: str
+    :param pose: Name of target pose for comparison. If None, then target pose defaults to the predicted pose with the highest probability
+    :type pose: str or None
+    :param filepath: Path to input file (image or video). Required if source is 'image' or 'video'
+    :type filepath: str or None
+    :return: None. Display pose correction output
+    :rtype: None
+    """
     speech_queue = queue.Queue(maxsize=1)
     threading.Thread(target=speech_worker, args=(speech_queue,), daemon=True).start()
 
     if source == 'image':
-        image_path = 'data/6388f2a3b4290800185ccda7.jpg'
-        image = cv2.imread(image_path)
+        if filepath is None:
+            print('No image path')
+            return
+        image = cv2.imread(filepath)
         annotated_image, corrections_text = process_frame(image, pose_landmarker, pose)
 
         if not speech_queue.full():
@@ -70,7 +80,10 @@ def main(source, pose):
         cv2.waitKey(0)
 
     elif source == 'video':
-        cap = cv2.VideoCapture("data/warrior2.mp4")
+        if filepath is None:
+            print('No video path')
+            return
+        cap = cv2.VideoCapture(filepath)
         warmup_frames = 30
         frame_count = 0
         while True:
@@ -115,5 +128,6 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--source', choices=['image', 'video', 'webcam'], default='image')
     parser.add_argument('--pose', type=str, default=None)
+    parser.add_argument('--filepath', type=str, default=None)
     args = parser.parse_args()
-    main(args.source, args.pose)
+    main(args.source, args.pose, args.filepath)

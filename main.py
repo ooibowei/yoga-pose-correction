@@ -1,10 +1,12 @@
 import cv2
-from TTS.api import TTS
 import uuid
 import base64
 import os
+import json
 import numpy as np
-from flask import Flask, request, jsonify
+from TTS.api import TTS
+from queue import Queue
+from flask import Flask, request, jsonify, Response
 from mediapipe.tasks import python
 from mediapipe.tasks.python import vision
 from app.correction import generate_pose_corrections, remove_angle_from_correction
@@ -14,12 +16,12 @@ from scripts.utils import generate_keypoints, normalise_keypoints
 
 app = Flask(__name__)
 
-# Initialise models
 model_path = 'models/pose_landmarker_lite.task'
 base_options = python.BaseOptions(model_asset_path=model_path)
 options = vision.PoseLandmarkerOptions(base_options=base_options)
 pose_landmarker = vision.PoseLandmarker.create_from_options(options)
 tts = TTS(model_name="tts_models/en/ljspeech/glow-tts", progress_bar=False)
+corrections_queue = Queue()
 
 def process_frame(frame, pose_landmarker, pose):
     keypoints = generate_keypoints(frame, pose_landmarker)
@@ -67,6 +69,42 @@ def pose_correction_image():
         "corrections_audio_base64": audio_base64
     })
 
+def gen_webcam(pose_landmarker, pose=None):
+    cap = cv2.VideoCapture(0)
+    last_corrections_text = None
+    if not cap.isOpened():
+        print("Cannot open webcam")
+        return
+    while True:
+        ret, frame = cap.read()
+        if not ret:
+            break
+        annotated_image, corrections_text = process_frame(frame, pose_landmarker, pose)
+        if corrections_text != last_corrections_text:
+            audio_bytes = generate_tts_audio(corrections_text)
+            audio_base64 = base64.b64encode(audio_bytes).decode("utf-8")
+            corrections_queue.put({"corrections_text": corrections_text, "corrections_audio": audio_base64})
+            last_corrections_text = corrections_text
+        img_encode = cv2.imencode(".jpg", annotated_image)[1]
+        image_bytes = img_encode.tobytes()
+        yield (b'--frame\r\n'
+               b'Content-Type: image/jpeg\r\n\r\n' + image_bytes + b'\r\n')
+    cap.release()
+
+@app.route('/webcam', methods=['GET'])
+def pose_correction_webcam():
+    pose = request.form.get('pose', None)
+    return app.response_class(gen_webcam(pose_landmarker, pose), mimetype='multipart/x-mixed-replace; boundary=frame')
+
+@app.route('/webcam_corrections', methods=['GET'])
+def pose_correction_webcam_audio():
+    def event_stream():
+        while True:
+            if not corrections_queue.empty():
+                correction = corrections_queue.get()
+                yield f"data: {json.dumps(correction)}\n\n"
+    return Response(event_stream(), mimetype="text/event-stream")
+
 @app.route('/video', methods=['POST'])
 def pose_correction_video():
     if 'file' not in request.files:
@@ -77,17 +115,20 @@ def pose_correction_video():
     video_path = f"temp_{uuid.uuid4().hex}.mp4"
     file.save(video_path)
     cap = cv2.VideoCapture(video_path)
+
     fps = cap.get(cv2.CAP_PROP_FPS)
     width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
     height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-
     output_path = f"output_{uuid.uuid4().hex}.mp4"
     fourcc = cv2.VideoWriter_fourcc(*'mp4v')
     out = cv2.VideoWriter(output_path, fourcc, fps, (width, height))
 
     warmup_frames = 30
     frame_count = 0
-    corrections_texts = []
+    corrections_list = []
+    frame_to_corrections = []
+    last_corrections_text = None
+
     while True:
         ret, frame = cap.read()
         if not ret:
@@ -95,89 +136,30 @@ def pose_correction_video():
         frame_count += 1
         if frame_count > warmup_frames:
             annotated_image, corrections_text = process_frame(frame, pose_landmarker, pose)
-            corrections_texts.append(corrections_text)
+            if corrections_text != last_corrections_text:
+                audio_bytes = generate_tts_audio(corrections_text)
+                corrections_list.append({'text': corrections_text, 'audio': base64.b64encode(audio_bytes).decode("utf-8")})
+                last_corrections_text = corrections_text
+            frame_to_corrections.append(len(corrections_list)-1)
         else:
             annotated_image = frame
+            frame_to_corrections.append(None)
         out.write(annotated_image)
+
     cap.release()
     out.release()
     os.remove(video_path)
 
-    video = open(output_path, 'rb')
-    video_encode_base64 = base64.b64encode(video.read()).decode("utf-8")
-    audio_bytes = generate_tts_audio([corrections_text])
-    audio_base64 = base64.b64encode(audio_bytes).decode("utf-8")
+    with open(output_path, 'rb') as video:
+        video_encode_base64 = base64.b64encode(video.read()).decode("utf-8")
+    os.remove(output_path)
 
     return jsonify({
-        "annotated_image_base64": video_encode_base64,
-        "corrections_audio_base64": audio_base64
+        "annotated_video_base64": video_encode_base64,
+        "corrections": corrections_list,
+        "frame_to_corrections": frame_to_corrections,
+        "fps": fps
     })
-
 
 if __name__ == "__main__":
     app.run()
-
-"""
-def main(source, pose):
-    speech_queue = queue.Queue(maxsize=1)
-    threading.Thread(target=speech_worker, args=(speech_queue,), daemon=True).start()
-
-    if source == 'image':
-        image_path = 'data/warrior2.jpg'
-        image = cv2.imread(image_path)
-        annotated_image, corrections_text = process_frame(image, pose_landmarker, pose)
-
-        if not speech_queue.full():
-            speech_queue.put(corrections_text)
-        cv2.imshow("Pose Correction", annotated_image)
-        cv2.waitKey(0)
-
-    elif source == 'video':
-        cap = cv2.VideoCapture("data/warrior2.mp4")
-        warmup_frames = 30
-        frame_count = 0
-        while True:
-            ret, frame = cap.read()
-            if not ret:
-                break
-            frame_count += 1
-            if frame_count > warmup_frames:
-                annotated_image, corrections_text = process_frame(frame, pose_landmarker, pose)
-                if not speech_queue.full():
-                    speech_queue.put(corrections_text)
-            else:
-                annotated_image = frame
-            cv2.imshow("Pose Correction Video", annotated_image)
-            if cv2.waitKey(1) & 0xFF == ord('q'):
-                break
-        cap.release()
-        cv2.destroyAllWindows()
-
-    elif source == 'webcam':
-        cap = cv2.VideoCapture(0)
-        warmup_frames = 30
-        frame_count = 0
-        while True:
-            ret, frame = cap.read()
-            if not ret:
-                break
-            frame_count += 1
-            if frame_count > warmup_frames:
-                annotated_image, corrections_text = process_frame(frame, pose_landmarker, pose)
-                if not speech_queue.full():
-                    speech_queue.put(corrections_text)
-            else:
-                annotated_image = frame
-            cv2.imshow("Pose Correction Video", annotated_image)
-            if cv2.waitKey(1) & 0xFF == ord('q'):
-                break
-        cap.release()
-        cv2.destroyAllWindows()
-
-if __name__ == '__main__':
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--source', choices=['image', 'video', 'webcam'], default='image')
-    parser.add_argument('--pose', type=str, default=None)
-    args = parser.parse_args()
-    main(args.source, args.pose)
-"""

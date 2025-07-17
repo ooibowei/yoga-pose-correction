@@ -7,12 +7,107 @@
 </head>
 <body>
 <h1>Yoga Pose Correction</h1>
+<p><strong>Instructions:</strong></p>
+<ul>
+    <li>Select the type of input: <em>image</em>, <em>video</em> or <em>webcam</em></li>
+    <li>Optionally, select a target yoga pose from the dropdown menu. If left empty, the app will predict the closest yoga pose based on the keypoints</li>
+    <li>If image or video was selected, upload a file using the file selector. Then click upload to begin analysis</li>
+    <li>If webcam was selected, live pose correction feedback with audio will be provided automatically</li>
+</ul>
 
 <label>Select input type:</label>
 <select id="input-type">
+    <option value="">--None--</option>
     <option value="image">Image</option>
     <option value="video">Video</option>
     <option value="webcam">Webcam</option>
+</select>
+
+<label>Select target pose (optional):</label>
+<select id="pose-input">
+    <option value="">--None--</option>
+    <option value="Akarna_Dhanurasana">Akarna Dhanurasana</option>
+    <option value="Bharadvajas_Twist_pose_or_Bharadvajasana_I_">Bharadvajas Twist pose or Bharadvajasana I</option>
+    <option value="Boat_Pose_or_Paripurna_Navasana_">Boat Pose or Paripurna Navasana</option>
+    <option value="Bound_Angle_Pose_or_Baddha_Konasana_">Bound Angle Pose or Baddha Konasana</option>
+    <option value="Bow_Pose_or_Dhanurasana_">Bow Pose or Dhanurasana</option>
+    <option value="Bridge_Pose_or_Setu_Bandha_Sarvangasana_">Bridge Pose or Setu Bandha Sarvangasana</option>
+    <option value="Camel_Pose_or_Ustrasana_">Camel Pose or Ustrasana</option>
+    <option value="Cat_Cow_Pose_or_Marjaryasana_">Cat Cow Pose or Marjaryasana</option>
+    <option value="Chair_Pose_or_Utkatasana_">Chair Pose or Utkatasana</option>
+    <option value="Child_Pose_or_Balasana_">Child Pose or Balasana</option>
+    <option value="Cobra_Pose_or_Bhujangasana_">Cobra Pose or Bhujangasana</option>
+    <option value="Cockerel_Pose">Cockerel Pose</option>
+    <option value="Corpse_Pose_or_Savasana_">Corpse Pose or Savasana</option>
+    <option value="Cow_Face_Pose_or_Gomukhasana_">Cow Face Pose or Gomukhasana</option>
+    <option value="Crane_(Crow)_Pose_or_Bakasana_">Crane (Crow) Pose or Bakasana</option>
+    <option value="Dolphin_Plank_Pose_or_Makara_Adho_Mukha_Svanasana_">Dolphin Plank Pose or Makara Adho Mukha Svanasana</option>
+    <option value="Dolphin_Pose_or_Ardha_Pincha_Mayurasana_">Dolphin Pose or Ardha Pincha Mayurasana</option>
+    <option value="Downward-Facing_Dog_pose_or_Adho_Mukha_Svanasana_">Downward-Facing Dog pose or Adho Mukha Svanasana</option>
+    <option value="Eagle_Pose_or_Garudasana_">Eagle Pose or Garudasana</option>
+    <option value="Eight-Angle_Pose_or_Astavakrasana_">Eight-Angle Pose or Astavakrasana</option>
+    <option value="Extended_Puppy_Pose_or_Uttana_Shishosana_">Extended Puppy Pose or Uttana Shishosana</option>
+    <option value="Extended_Revolved_Side_Angle_Pose_or_Utthita_Parsvakonasana_">Extended Revolved Side Angle Pose or Utthita Parsvakonasana</option>
+    <option value="Extended_Revolved_Triangle_Pose_or_Utthita_Trikonasana_">Extended Revolved Triangle Pose or Utthita Trikonasana</option>
+    <option value="Feathered_Peacock_Pose_or_Pincha_Mayurasana_">Feathered Peacock Pose or Pincha Mayurasana</option>
+    <option value="Firefly_Pose_or_Tittibhasana_">Firefly Pose or Tittibhasana</option>
+    <option value="Fish_Pose_or_Matsyasana_">Fish Pose or Matsyasana</option>
+    <option value="Four-Limbed_Staff_Pose_or_Chaturanga_Dandasana_">Four-Limbed Staff Pose or Chaturanga Dandasana</option>
+    <option value="Frog_Pose_or_Bhekasana">Frog Pose or Bhekasana</option>
+    <option value="Garland_Pose_or_Malasana_">Garland Pose or Malasana</option>
+    <option value="Gate_Pose_or_Parighasana_">Gate Pose or Parighasana</option>
+    <option value="Half_Lord_of_the_Fishes_Pose_or_Ardha_Matsyendrasana_">Half Lord of the Fishes Pose or Ardha Matsyendrasana</option>
+    <option value="Half_Moon_Pose_or_Ardha_Chandrasana_">Half Moon Pose or Ardha Chandrasana</option>
+    <option value="Handstand_pose_or_Adho_Mukha_Vrksasana_">Handstand pose or Adho Mukha Vrksasana</option>
+    <option value="Happy_Baby_Pose_or_Ananda_Balasana_">Happy Baby Pose or Ananda Balasana</option>
+    <option value="Head-to-Knee_Forward_Bend_pose_or_Janu_Sirsasana_">Head-to-Knee Forward Bend pose or Janu Sirsasana</option>
+    <option value="Heron_Pose_or_Krounchasana_">Heron Pose or Krounchasana</option>
+    <option value="Intense_Side_Stretch_Pose_or_Parsvottanasana_">Intense Side Stretch Pose or Parsvottanasana</option>
+    <option value="Legs-Up-the-Wall_Pose_or_Viparita_Karani_">Legs-Up-the-Wall Pose or Viparita Karani</option>
+    <option value="Locust_Pose_or_Salabhasana_">Locust Pose or Salabhasana</option>
+    <option value="Lord_of_the_Dance_Pose_or_Natarajasana_">Lord of the Dance Pose or Natarajasana</option>
+    <option value="Low_Lunge_pose_or_Anjaneyasana_">Low Lunge pose or Anjaneyasana</option>
+    <option value="Noose_Pose_or_Pasasana_">Noose Pose or Pasasana</option>
+    <option value="Peacock_Pose_or_Mayurasana_">Peacock Pose or Mayurasana</option>
+    <option value="Pigeon_Pose_or_Kapotasana_">Pigeon Pose or Kapotasana</option>
+    <option value="Plank_Pose_or_Kumbhakasana_">Plank Pose or Kumbhakasana</option>
+    <option value="Plow_Pose_or_Halasana_">Plow Pose or Halasana</option>
+    <option value="Pose_Dedicated_to_the_Sage_Koundinya_or_Eka_Pada_Koundinyanasana_I_and_II">Pose Dedicated to the Sage Koundinya or Eka Pada Koundinyanasana I and II</option>
+    <option value="Rajakapotasana">Rajakapotasana</option>
+    <option value="Reclining_Hand-to-Big-Toe_Pose_or_Supta_Padangusthasana_">Reclining Hand-to-Big-Toe Pose or Supta Padangusthasana</option>
+    <option value="Revolved_Head-to-Knee_Pose_or_Parivrtta_Janu_Sirsasana_">Revolved Head-to-Knee Pose or Parivrtta Janu Sirsasana</option>
+    <option value="Scale_Pose_or_Tolasana_">Scale Pose or Tolasana</option>
+    <option value="Scorpion_pose_or_vrischikasana">Scorpion pose or vrischikasana</option>
+    <option value="Seated_Forward_Bend_pose_or_Paschimottanasana_">Seated Forward Bend pose or Paschimottanasana</option>
+    <option value="Shoulder-Pressing_Pose_or_Bhujapidasana_">Shoulder-Pressing Pose or Bhujapidasana</option>
+    <option value="Side-Reclining_Leg_Lift_pose_or_Anantasana_">Side-Reclining Leg Lift pose or Anantasana</option>
+    <option value="Side_Crane_(Crow)_Pose_or_Parsva_Bakasana_">Side Crane (Crow) Pose or Parsva Bakasana</option>
+    <option value="Side_Plank_Pose_or_Vasisthasana_">Side Plank Pose or Vasisthasana</option>
+    <option value="Sitting pose 1 (normal)">Sitting pose 1 (normal)</option>
+    <option value="Split pose">Split pose</option>
+    <option value="Staff_Pose_or_Dandasana_">Staff Pose or Dandasana</option>
+    <option value="Standing_big_toe_hold_pose_or_Utthita_Padangusthasana">Standing big toe hold pose or Utthita Padangusthasana</option>
+    <option value="Standing_Forward_Bend_pose_or_Uttanasana_">Standing Forward Bend pose or Uttanasana</option>
+    <option value="Standing_Split_pose_or_Urdhva_Prasarita_Eka_Padasana_">Standing Split pose or Urdhva Prasarita Eka Padasana</option>
+    <option value="Supported_Headstand_pose_or_Salamba_Sirsasana_">Supported Headstand pose or Salamba Sirsasana</option>
+    <option value="Supported_Shoulderstand_pose_or_Salamba_Sarvangasana_">Supported Shoulderstand pose or Salamba Sarvangasana</option>
+    <option value="Supta_Baddha_Konasana_">Supta Baddha Konasana</option>
+    <option value="Supta_Virasana_Vajrasana">Supta Virasana Vajrasana</option>
+    <option value="Tortoise_Pose">Tortoise Pose</option>
+    <option value="Tree_Pose_or_Vrksasana_">Tree Pose or Vrksasana</option>
+    <option value="Upward_Bow_(Wheel)_Pose_or_Urdhva_Dhanurasana_">Upward Bow (Wheel) Pose or Urdhva Dhanurasana</option>
+    <option value="Upward_Facing_Two-Foot_Staff_Pose_or_Dwi_Pada_Viparita_Dandasana_">Upward Facing Two-Foot Staff Pose or Dwi Pada Viparita Dandasana</option>
+    <option value="Upward_Plank_Pose_or_Purvottanasana_">Upward Plank Pose or Purvottanasana</option>
+    <option value="viparita_virabhadrasana_or_reverse_warrior_pose">viparita virabhadrasana or reverse warrior pose</option>
+    <option value="Virasana_or_Vajrasana">Virasana or Vajrasana</option>
+    <option value="Warrior_III_Pose_or_Virabhadrasana_III_">Warrior III Pose or Virabhadrasana III</option>
+    <option value="Warrior_II_Pose_or_Virabhadrasana_II_">Warrior II Pose or Virabhadrasana II</option>
+    <option value="Warrior_I_Pose_or_Virabhadrasana_I_">Warrior I Pose or Virabhadrasana I</option>
+    <option value="Wide-Angle_Seated_Forward_Bend_pose_or_Upavistha_Konasana_">Wide-Angle Seated Forward Bend pose or Upavistha Konasana</option>
+    <option value="Wide-Legged_Forward_Bend_pose_or_Prasarita_Padottanasana_">Wide-Legged Forward Bend pose or Prasarita Padottanasana</option>
+    <option value="Wild_Thing_pose_or_Camatkarasana_">Wild Thing pose or Camatkarasana</option>
+    <option value="Wind_Relieving_pose_or_Pawanmuktasana">Wind Relieving pose or Pawanmuktasana</option>
+    <option value="Yogic_sleep_pose">Yogic sleep pose</option>
 </select>
 
 <div id="upload-section">
@@ -20,12 +115,12 @@
     <button id="upload-button" type="button">Upload</button>
 </div>
 
-<div id="result-section"></div>
-
 <div id="webcam-section">
     <h3>Live Webcam Stream</h3>
     <img id="webcam-stream" alt="Webcam Stream">
 </div>
+
+<div id="result-section"></div>
 
 <script src="/static/script.js"></script>
 

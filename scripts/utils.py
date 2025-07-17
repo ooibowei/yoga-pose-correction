@@ -270,7 +270,7 @@ pose_key_joints = {
     "Child_Pose_or_Balasana_": ["left_knee", "right_knee", "torso_bend"],
     "Cobra_Pose_or_Bhujangasana_": ["left_elbow", "right_elbow", "torso_bend", "shoulder_tilt"],
     "Cockerel_Pose": ["left_knee", "right_knee", "shoulder_tilt"],
-    "Corpse_Pose_or_Savasana_": [],
+    "Corpse_Pose_or_Savasana_": ["left_knee", "right_knee", "left_elbow", "right_elbow"],
     "Cow_Face_Pose_or_Gomukhasana_": ["left_knee", "right_knee", "left_elbow", "right_elbow"],
     "Crane_(Crow)_Pose_or_Bakasana_": ["left_elbow", "right_elbow", "torso_bend"],
     "Dolphin_Plank_Pose_or_Makara_Adho_Mukha_Svanasana_": ["left_elbow", "right_elbow", "hip_tilt"],

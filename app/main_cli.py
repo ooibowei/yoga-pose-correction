@@ -73,9 +73,6 @@ def main(source, pose, filepath):
             return
         image = cv2.imread(filepath)
         annotated_image, corrections_text = process_frame(image, pose_landmarker, pose)
-
-        if not speech_queue.full():
-            speech_queue.put(corrections_text)
         cv2.imshow("Pose Correction", annotated_image)
         cv2.waitKey(0)
 
@@ -93,8 +90,6 @@ def main(source, pose, filepath):
             frame_count += 1
             if frame_count > warmup_frames:
                 annotated_image, corrections_text = process_frame(frame, pose_landmarker, pose)
-                if not speech_queue.full():
-                    speech_queue.put(corrections_text)
             else:
                 annotated_image = frame
             cv2.imshow("Pose Correction Video", annotated_image)

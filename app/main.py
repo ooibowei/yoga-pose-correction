@@ -66,13 +66,8 @@ def pose_correction_image():
     annotated_image, corrections_text = process_frame(frame, pose_landmarker, pose)
     img_encode = cv2.imencode(".jpg", annotated_image)[1]
     img_encode_base64 = base64.b64encode(img_encode).decode("utf-8")
-    audio_bytes = generate_tts_audio(corrections_text)
-    audio_base64 = base64.b64encode(audio_bytes).decode("utf-8")
 
-    return jsonify({
-        "annotated_image_base64": img_encode_base64,
-        "corrections_audio_base64": audio_base64
-    })
+    return jsonify({"annotated_image_base64": img_encode_base64})
 
 def gen_webcam(pose_landmarker, pose=None):
     cap = cv2.VideoCapture(0)
@@ -98,7 +93,7 @@ def gen_webcam(pose_landmarker, pose=None):
 
 @app.route('/webcam', methods=['GET'])
 def pose_correction_webcam():
-    pose = request.form.get('pose', None)
+    pose = request.args.get('pose', None)
     return app.response_class(gen_webcam(pose_landmarker, pose), mimetype='multipart/x-mixed-replace; boundary=frame')
 
 @app.route('/webcam_corrections', methods=['GET'])
@@ -130,9 +125,6 @@ def pose_correction_video():
 
     warmup_frames = 30
     frame_count = 0
-    corrections_list = []
-    frame_to_corrections = []
-    last_corrections_text = None
 
     while True:
         ret, frame = cap.read()
@@ -141,16 +133,9 @@ def pose_correction_video():
         frame_count += 1
         if frame_count > warmup_frames:
             annotated_image, corrections_text = process_frame(frame, pose_landmarker, pose)
-            if corrections_text != last_corrections_text:
-                audio_bytes = generate_tts_audio(corrections_text)
-                corrections_list.append({'text': corrections_text, 'audio': base64.b64encode(audio_bytes).decode("utf-8")})
-                last_corrections_text = corrections_text
-            frame_to_corrections.append(len(corrections_list)-1)
         else:
             annotated_image = frame
-            frame_to_corrections.append(None)
         out.write(annotated_image)
-
     cap.release()
     out.release()
     os.remove(video_path)
@@ -159,12 +144,7 @@ def pose_correction_video():
         video_encode_base64 = base64.b64encode(video.read()).decode("utf-8")
     os.remove(output_path)
 
-    return jsonify({
-        "annotated_video_base64": video_encode_base64,
-        "corrections": corrections_list,
-        "frame_to_corrections": frame_to_corrections,
-        "fps": fps
-    })
+    return jsonify({"annotated_video_base64": video_encode_base64})
 
 if __name__ == "__main__":
     app.run()

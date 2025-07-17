@@ -1,8 +1,18 @@
-body { font-family: sans-serif; padding: 20px; }
+body {
+  font-family: sans-serif;
+  padding: 20px;
+  margin: auto;
+  color: #222;
+  background-color: #fafafa;
+}
 
-#upload-section { display: none; margin-top: 20px; }
+#upload-section,
+#webcam-section {
+  display: none;
+  margin-top: 20px;
+}
 
-#webcam-section { display: none; margin-top: 20px; }
+h1 { text-align: center; }
 
 #result-section { margin-top: 20px; }
 

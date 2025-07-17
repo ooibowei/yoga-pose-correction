@@ -29,7 +29,7 @@ def visualise_pose_corrections(image, keypoints, corrections, target_pose, targe
     cv2.rectangle(annotated_image, (box_x, box_y), (box_x + box_w, box_y + box_h), (255, 255, 255), -1)
     cv2.rectangle(annotated_image, (box_x, box_y), (box_x + box_w, box_y + box_h), (0, 0, 0), 1, lineType=cv2.LINE_AA)
 
-    cv2.putText(annotated_image, f"Pose: {target_pose.replace('_', ' ')} (Prob {target_prob:.1f})", (box_x + 10, box_y + 25), cv2.FONT_HERSHEY_SIMPLEX, 0.45, (0, 0, 0), 1, lineType=cv2.LINE_AA)
+    cv2.putText(annotated_image, f"Pose: {target_pose.replace('_', ' ')} (Prob {target_prob:.2f})", (box_x + 10, box_y + 25), cv2.FONT_HERSHEY_SIMPLEX, 0.45, (0, 0, 0), 1, lineType=cv2.LINE_AA)
     if not corrections:
         cv2.putText(annotated_image, "- No corrections needed", (box_x + 10, box_y + 50),
                     cv2.FONT_HERSHEY_SIMPLEX, 0.45, (0, 0, 0), 1, lineType=cv2.LINE_AA)

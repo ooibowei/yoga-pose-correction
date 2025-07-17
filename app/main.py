@@ -6,7 +6,7 @@ import json
 import numpy as np
 from TTS.api import TTS
 from queue import Queue
-from flask import Flask, request, jsonify, Response
+from flask import Flask, request, render_template, jsonify, Response
 from mediapipe.tasks import python
 from mediapipe.tasks.python import vision
 from app.correction import generate_pose_corrections, remove_angle_from_correction
@@ -14,7 +14,8 @@ from app.visualiser import visualise_pose_corrections
 from app.predictor import predict_pose
 from scripts.utils import generate_keypoints, normalise_keypoints
 
-app = Flask(__name__)
+#app = Flask(__name__)
+app = Flask(__name__, static_folder='static', template_folder='templates')
 
 model_path = 'models/pose_landmarker_lite.task'
 base_options = python.BaseOptions(model_asset_path=model_path)
@@ -48,6 +49,10 @@ def generate_tts_audio(text):
         audio_bytes = file.read()
     os.remove(filename)
     return audio_bytes
+
+@app.route('/')
+def index():
+    return render_template('index.html')
 
 @app.route('/image', methods=['POST'])
 def pose_correction_image():
@@ -120,7 +125,7 @@ def pose_correction_video():
     width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
     height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
     output_path = f"output_{uuid.uuid4().hex}.mp4"
-    fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+    fourcc = cv2.VideoWriter_fourcc(*'avc1')
     out = cv2.VideoWriter(output_path, fourcc, fps, (width, height))
 
     warmup_frames = 30

@@ -1,0 +1,26 @@
+body { font-family: sans-serif; padding: 20px; }
+
+#upload-section { display: none; margin-top: 20px; }
+
+#webcam-section { display: none; margin-top: 20px; }
+
+#result-section { margin-top: 20px; }
+
+img, video { max-width: 100%; margin-top: 10px; }
+
+.spinner {
+  border: 3px solid #f3f3f3;
+  border-top: 3px solid #333;
+  border-radius: 50%;
+  width: 18px;
+  height: 18px;
+  animation: spin 1s linear infinite;
+  display: inline-block;
+  vertical-align: middle;
+  margin-right: 8px;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}

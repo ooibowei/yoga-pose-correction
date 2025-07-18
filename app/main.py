@@ -3,6 +3,7 @@ import uuid
 import base64
 import os
 import json
+import tempfile
 import numpy as np
 from TTS.api import TTS
 from queue import Queue
@@ -42,11 +43,13 @@ def process_frame(frame, pose_landmarker, pose):
     return annotated_image, corrections_text
 
 def generate_tts_audio(text):
-    filename = f"temp_{uuid.uuid4().hex}.wav"
-    tts.tts_to_file(text=text, file_path=filename)
-    with open(filename, 'rb') as file:
+    temp_file = tempfile.NamedTemporaryFile(suffix=".wav", delete=False)
+    temp_path = temp_file.name
+    temp_file.close()
+    tts.tts_to_file(text=text, file_path=temp_path)
+    with open(temp_path, 'rb') as file:
         audio_bytes = file.read()
-    os.remove(filename)
+    os.remove(temp_path)
     return audio_bytes
 
 @app.route('/')
@@ -111,14 +114,18 @@ def pose_correction_video():
     file = request.files['file']
     pose = request.form.get('pose', None)
 
-    video_path = f"temp_{uuid.uuid4().hex}.mp4"
+    temp_file = tempfile.NamedTemporaryFile(suffix=".mp4", delete=False)
+    video_path = temp_file.name
+    temp_file.close()
     file.save(video_path)
     cap = cv2.VideoCapture(video_path)
 
     fps = cap.get(cv2.CAP_PROP_FPS)
     width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
     height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-    output_path = f"output_{uuid.uuid4().hex}.mp4"
+    output_file = tempfile.NamedTemporaryFile(suffix=".mp4", delete=False)
+    output_path = output_file.name
+    output_file.close()
     fourcc = cv2.VideoWriter_fourcc(*'avc1')
     out = cv2.VideoWriter(output_path, fourcc, fps, (width, height))
 

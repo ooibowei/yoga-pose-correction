@@ -3,7 +3,6 @@ body {
   padding: 20px;
   margin: auto;
   color: #222;
-  background-color: #fafafa;
 }
 
 #upload-section, #webcam-section { display: none; margin-top: 20px; }

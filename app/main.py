@@ -14,7 +14,6 @@ from app.visualiser import visualise_pose_corrections
 from app.predictor import predict_pose
 from scripts.utils import generate_keypoints, normalise_keypoints
 
-#app = Flask(__name__)
 app = Flask(__name__, static_folder='static', template_folder='templates')
 
 model_path = 'models/pose_landmarker_lite.task'
@@ -147,4 +146,4 @@ def pose_correction_video():
     return jsonify({"annotated_video_base64": video_encode_base64})
 
 if __name__ == "__main__":
-    app.run()
+    app.run(host="0.0.0.0", port=5000)

@@ -6,15 +6,15 @@ body {
   background-color: #fafafa;
 }
 
-#upload-section,
-#webcam-section {
-  display: none;
-  margin-top: 20px;
-}
+#upload-section, #webcam-section { display: none; margin-top: 20px; }
+
+#result-section { margin-top: 20px }
+
+#input-type { margin-bottom: 16px; }
+
+#upload-button { margin-top: 8px; display: block; }
 
 h1 { text-align: center; }
-
-#result-section { margin-top: 20px; }
 
 img, video { max-width: 100%; margin-top: 10px; }
 
@@ -22,7 +22,7 @@ select { display: block; margin-bottom: 8px; margin-top: 8px; }
 
 label { display: block; margin-top: 20px; }
 
-#input-type { margin-bottom: 16px; }
+input[type="file"] { margin-top: 8px; display: block; }
 
 .spinner {
   border: 3px solid #f3f3f3;

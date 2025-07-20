@@ -8,7 +8,7 @@ import time
 import asyncio
 from threading import Lock
 from edge_tts import Communicate
-from fastapi import FastAPI, UploadFile
+from fastapi import FastAPI, UploadFile, Request, Form, Query
 from fastapi.responses import StreamingResponse, JSONResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 from mediapipe.tasks import python
@@ -69,7 +69,7 @@ def process_frame(frame, pose_landmarker, pose=None, timestamp_ms=0):
     annotated_image = visualise_pose_corrections(frame.copy(), keypoints, corrections, target_pose, target_prob)
     return annotated_image, corrections_text
 
-async def gen_webcam_stream(pose_landmarker, pose=None):
+async def gen_webcam_stream(pose_landmarker, pose=None, request=None):
     last_tts_time = 0
     frame_count = 0
     last_encoded_image = None
@@ -79,6 +79,9 @@ async def gen_webcam_stream(pose_landmarker, pose=None):
         print("Cannot open webcam")
         return
     while True:
+        if await request.is_disconnected():
+            print("Client disconnected, stopping webcam stream.")
+            break
         ret, frame = cap.read()
         if not ret:
             break
@@ -128,7 +131,7 @@ async def index():
     return FileResponse('app/templates/index.html')
 
 @app.post('/image')
-async def pose_correction_image(file: UploadFile, pose=None):
+async def pose_correction_image(file: UploadFile, pose: str = Form(None)):
     try:
         file_content = await file.read()
         frame = cv2.imdecode(np.frombuffer(file_content, np.uint8), cv2.IMREAD_COLOR)
@@ -140,8 +143,9 @@ async def pose_correction_image(file: UploadFile, pose=None):
         return JSONResponse({'error': str(e)})
 
 @app.post('/video')
-async def pose_correction_video(file: UploadFile, pose=None):
+async def pose_correction_video(file: UploadFile, pose: str = Form(None)):
     try:
+        pose_landmarker_video = vision.PoseLandmarker.create_from_options(options_video)
         input_temp = tempfile.NamedTemporaryFile(delete=False, suffix=".mp4")
         input_path = input_temp.name
         content = await file.read()
@@ -181,9 +185,10 @@ async def pose_correction_video(file: UploadFile, pose=None):
         return JSONResponse({'error': str(e)})
 
 @app.get('/webcam')
-async def pose_correction_webcam(pose=None):
+async def pose_correction_webcam(request: Request, pose: str = Query(None)):
     try:
-        stream = gen_webcam_stream(pose_landmarker_livestream, pose)
+        print(f"New /webcam request with pose: {pose}")
+        stream = gen_webcam_stream(pose_landmarker_livestream, pose, request)
         if stream is None:
             return JSONResponse(content={'error': 'No webcam stream'})
         else:
@@ -198,4 +203,3 @@ async def pose_correction_webcam_audio():
             correction = await corrections_queue.get()
             yield f"data: {json.dumps(correction)}\n\n"
     return StreamingResponse(event_stream(), media_type="text/event-stream")
-

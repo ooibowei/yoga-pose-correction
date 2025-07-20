@@ -1,4 +1,5 @@
 document.addEventListener("DOMContentLoaded", function(){
+    let audioSource = null;
     const inputType = document.getElementById("input-type");
     const uploadSection = document.getElementById("upload-section");
     const webcamSection = document.getElementById("webcam-section");
@@ -11,6 +12,13 @@ document.addEventListener("DOMContentLoaded", function(){
     // Update UI based on input type
     function updateUI() {
         const type = inputType.value;
+        if (type !== "webcam") {
+            webcamStream.src = "";
+            if (audioSource) {
+                audioSource.close();
+                audioSource = null;
+            }
+        }
         if (type === "image" || type === "video") {
             uploadSection.style.display = "block";
             webcamSection.style.display = "none";
@@ -41,19 +49,16 @@ document.addEventListener("DOMContentLoaded", function(){
     poseInput.addEventListener("change", async () => {
         const file = fileInput.files[0];
         const type = inputType.value;
-
         if (type === "webcam") {
             startWebcamStream();
-            return;
         } else if (type === "image" || type === "video") {
             if (!file) return;
-            uploadButton.click();
+            uploadCurrentFileWithPose();
         }
     });
 
-    // Upload button
-    uploadButton.addEventListener("click", async (event) => {
-        event.preventDefault();
+    // Upload
+    async function uploadCurrentFileWithPose() {
         const type = inputType.value;
         const file = fileInput.files[0];
         const pose = poseInput.value;
@@ -63,9 +68,7 @@ document.addEventListener("DOMContentLoaded", function(){
         }
 
         uploadButton.disabled = true;
-        resultSection.innerHTML = "";
         resultSection.innerHTML = '<span class="spinner"></span> Analysing...';
-
         const formData = new FormData();
         formData.append("file", file);
         if (pose !== "") {
@@ -78,33 +81,40 @@ document.addEventListener("DOMContentLoaded", function(){
         });
 
         const data = await response.json();
-
         if (!response.ok || data.error) {
-            const message = data.error || "Unknown error";
-            alert("Error: " + message);
+            alert("Error: " + (data.error || "Unknown error"));
+            uploadButton.disabled = false;
             return;
         }
-
+        resultSection.innerHTML = "";
         if (type === "image") {
             const img = document.createElement("img");
             img.src = "data:image/jpeg;base64," + data.annotated_image_base64;
-            resultSection.innerHTML = "";
             resultSection.appendChild(img);
         } else if (type === "video") {
             const video = document.createElement("video");
-            video.controls = true
+            video.controls = true;
             video.playsInline = true;
             video.src = "data:video/mp4;base64," + data.annotated_video_base64;
-
-            resultSection.innerHTML = "";
             resultSection.appendChild(video);
         }
-
-        uploadButton.disabled = false
+        uploadButton.disabled = false;
+    }
+    uploadButton.addEventListener("click", async (event) => {
+        event.preventDefault();
+        uploadCurrentFileWithPose();
     });
 
     // Webcam video and audio
     function startWebcamStream() {
+        if (webcamStream.src) {
+            webcamStream.src = "";
+        }
+        if (audioSource) {
+            audioSource.close();
+            audioSource = null;
+        }
+
         const pose = poseInput.value;
         if (pose === "") {
             webcamStream.src = "/webcam"
@@ -112,9 +122,9 @@ document.addEventListener("DOMContentLoaded", function(){
             webcamStream.src = `/webcam?pose=${encodeURIComponent(pose)}`;
         }
 
-        const audioSource = new EventSource("/webcam_corrections"); // audio endpoint
-        let audioPlaying = false;
+        audioSource = new EventSource("/webcam_corrections");
         const audio = new Audio()
+        let audioPlaying = false;
 
         audio.onended = () => {
             audioPlaying = false;

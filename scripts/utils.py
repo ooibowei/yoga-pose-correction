@@ -19,7 +19,7 @@ def normalise_keypoints(arr):
     arr_norm[:, :3] /= (left_torso_length + 1e-6)
     return arr_norm
 
-def generate_keypoints(image, pose_landmarker):
+def generate_keypoints(image, pose_landmarker, timestamp_ms=0):
     """
     Generate normalised keypoints from image using MediaPipe
     :param image: Image file (jpg/jpeg/png) read by cv2 in BGR
@@ -31,7 +31,10 @@ def generate_keypoints(image, pose_landmarker):
     """
     image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
     mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=image_rgb)
-    pose_res = pose_landmarker.detect(mp_image)
+    if pose_landmarker._running_mode.name == "IMAGE":
+        pose_res = pose_landmarker.detect(mp_image)
+    elif pose_landmarker._running_mode.name == "VIDEO":
+        pose_res = pose_landmarker.detect_for_video(mp_image, timestamp_ms)
     if pose_res.pose_landmarks is None or len(pose_res.pose_landmarks) == 0:
         return None
     keypoints_arr = np.array([[lm.x, lm.y, lm.z, lm.visibility] for lm in pose_res.pose_landmarks[0]])

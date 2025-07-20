@@ -79,6 +79,12 @@ document.addEventListener("DOMContentLoaded", function(){
 
         const data = await response.json();
 
+        if (!response.ok || data.error) {
+            const message = data.error || "Unknown error";
+            alert("Error: " + message);
+            return;
+        }
+
         if (type === "image") {
             const img = document.createElement("img");
             img.src = "data:image/jpeg;base64," + data.annotated_image_base64;

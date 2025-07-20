@@ -1,5 +1,4 @@
 import cv2
-import uuid
 import base64
 import os
 import json
@@ -63,13 +62,15 @@ def pose_correction_image():
     file = request.files['file']
     pose = request.form.get('pose', None)
 
-    file_bytes = np.frombuffer(file.read(), np.uint8)
-    frame = cv2.imdecode(file_bytes, cv2.IMREAD_COLOR)
-    annotated_image, corrections_text = process_frame(frame, pose_landmarker, pose)
-    img_encode = cv2.imencode(".jpg", annotated_image)[1]
-    img_encode_base64 = base64.b64encode(img_encode).decode("utf-8")
-
-    return jsonify({"annotated_image_base64": img_encode_base64})
+    try:
+        file_bytes = np.frombuffer(file.read(), np.uint8)
+        frame = cv2.imdecode(file_bytes, cv2.IMREAD_COLOR)
+        annotated_image, corrections_text = process_frame(frame, pose_landmarker, pose)
+        img_encode = cv2.imencode(".jpg", annotated_image)[1]
+        img_encode_base64 = base64.b64encode(img_encode).decode("utf-8")
+        return jsonify({"annotated_image_base64": img_encode_base64})
+    except Exception as e:
+        return jsonify({"error": str(e)})
 
 def gen_webcam(pose_landmarker, pose=None):
     cap = cv2.VideoCapture(0)
@@ -96,7 +97,14 @@ def gen_webcam(pose_landmarker, pose=None):
 @app.route('/webcam', methods=['GET'])
 def pose_correction_webcam():
     pose = request.args.get('pose', None)
-    return app.response_class(gen_webcam(pose_landmarker, pose), mimetype='multipart/x-mixed-replace; boundary=frame')
+    try:
+        stream = gen_webcam(pose_landmarker, pose)
+        if stream is None:
+            return jsonify({'error': 'No webcam stream'})
+        else:
+            return app.response_class(stream, mimetype='multipart/x-mixed-replace; boundary=frame')
+    except Exception as e:
+        return jsonify({'error': str(e)})
 
 @app.route('/webcam_corrections', methods=['GET'])
 def pose_correction_webcam_audio():
@@ -114,43 +122,47 @@ def pose_correction_video():
     file = request.files['file']
     pose = request.form.get('pose', None)
 
-    temp_file = tempfile.NamedTemporaryFile(suffix=".mp4", delete=False)
-    video_path = temp_file.name
-    temp_file.close()
-    file.save(video_path)
-    cap = cv2.VideoCapture(video_path)
+    try:
+        temp_file = tempfile.NamedTemporaryFile(suffix=".mp4", delete=False)
+        video_path = temp_file.name
+        temp_file.close()
+        file.save(video_path)
+        cap = cv2.VideoCapture(video_path)
 
-    fps = cap.get(cv2.CAP_PROP_FPS)
-    width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-    height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-    output_file = tempfile.NamedTemporaryFile(suffix=".mp4", delete=False)
-    output_path = output_file.name
-    output_file.close()
-    fourcc = cv2.VideoWriter_fourcc(*'avc1')
-    out = cv2.VideoWriter(output_path, fourcc, fps, (width, height))
+        fps = cap.get(cv2.CAP_PROP_FPS)
+        width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+        height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+        output_file = tempfile.NamedTemporaryFile(suffix=".mp4", delete=False)
+        output_path = output_file.name
+        output_file.close()
+        fourcc = cv2.VideoWriter_fourcc(*'avc1')
+        out = cv2.VideoWriter(output_path, fourcc, fps, (width, height))
 
-    warmup_frames = 30
-    frame_count = 0
+        warmup_frames = 30
+        frame_count = 0
 
-    while True:
-        ret, frame = cap.read()
-        if not ret:
-            break
-        frame_count += 1
-        if frame_count > warmup_frames:
-            annotated_image, corrections_text = process_frame(frame, pose_landmarker, pose)
-        else:
-            annotated_image = frame
-        out.write(annotated_image)
-    cap.release()
-    out.release()
-    os.remove(video_path)
+        while True:
+            ret, frame = cap.read()
+            if not ret:
+                break
+            frame_count += 1
+            if frame_count > warmup_frames:
+                annotated_image, corrections_text = process_frame(frame, pose_landmarker, pose)
+            else:
+                annotated_image = frame
+            out.write(annotated_image)
+        cap.release()
+        out.release()
+        os.remove(video_path)
 
-    with open(output_path, 'rb') as video:
-        video_encode_base64 = base64.b64encode(video.read()).decode("utf-8")
-    os.remove(output_path)
+        with open(output_path, 'rb') as video:
+            video_encode_base64 = base64.b64encode(video.read()).decode("utf-8")
+        os.remove(output_path)
 
-    return jsonify({"annotated_video_base64": video_encode_base64})
+        return jsonify({"annotated_video_base64": video_encode_base64})
+    except Exception as e:
+        return jsonify({"error": str(e)})
 
-if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000)
+if __name__ == '__main__':
+    from waitress import serve
+    serve(app)

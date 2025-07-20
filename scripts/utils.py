@@ -37,6 +37,13 @@ def generate_keypoints(image, pose_landmarker):
     keypoints_arr = np.array([[lm.x, lm.y, lm.z, lm.visibility] for lm in pose_res.pose_landmarks[0]])
     return keypoints_arr
 
+def generate_keypoints_async(frame, pose_landmarker, timestamp_ms):
+    """
+    Asynchronous version of generate_keypoints. Feeds frames into mediapipe without any return value
+    """
+    mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=frame)
+    pose_landmarker.detect_async(mp_image, timestamp_ms)
+
 def calculate_angle(a, b, c, vis_threshold=0):
     """
     Calculate angle between three keypoints (a, b, c)

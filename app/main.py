@@ -4,6 +4,8 @@ import os
 import json
 import tempfile
 import numpy as np
+import time
+from threading import Lock
 from TTS.api import TTS
 from queue import Queue
 from flask import Flask, request, render_template, jsonify, Response
@@ -12,34 +14,7 @@ from mediapipe.tasks.python import vision
 from app.correction import generate_pose_corrections, remove_angle_from_correction
 from app.visualiser import visualise_pose_corrections
 from app.predictor import predict_pose
-from scripts.utils import generate_keypoints, normalise_keypoints
-
-app = Flask(__name__, static_folder='static', template_folder='templates')
-
-model_path = 'models/pose_landmarker_lite.task'
-base_options = python.BaseOptions(model_asset_path=model_path)
-options = vision.PoseLandmarkerOptions(base_options=base_options)
-pose_landmarker = vision.PoseLandmarker.create_from_options(options)
-tts = TTS(model_name="tts_models/en/ljspeech/glow-tts", progress_bar=False)
-corrections_queue = Queue()
-
-def process_frame(frame, pose_landmarker, pose):
-    keypoints = generate_keypoints(frame, pose_landmarker)
-    if keypoints is None:
-        return frame, "No keypoints detected"
-    keypoints_norm = normalise_keypoints(keypoints)
-    if pose is None:
-        target_pose, target_prob = predict_pose(keypoints_norm)
-    else:
-        target_pose, target_prob = pose, 1
-
-    corrections = generate_pose_corrections(keypoints_norm, target_pose, threshold=10)
-    if corrections:
-        corrections_text = ". ".join(remove_angle_from_correction(correction) for correction in corrections.values())
-    else:
-        corrections_text = "No corrections needed"
-    annotated_image = visualise_pose_corrections(frame.copy(), keypoints, corrections, target_pose, target_prob)
-    return annotated_image, corrections_text
+from scripts.utils import generate_keypoints, normalise_keypoints, generate_keypoints_async
 
 def generate_tts_audio(text):
     temp_file = tempfile.NamedTemporaryFile(suffix=".wav", delete=False)
@@ -50,6 +25,86 @@ def generate_tts_audio(text):
         audio_bytes = file.read()
     os.remove(temp_path)
     return audio_bytes
+
+def result_callback(result, output_image, timestamp_ms):
+    global latest_result
+    with result_lock:
+        latest_result["image"] = output_image
+        latest_result["keypoints"] = result.pose_landmarks
+
+def process_frame(frame, pose_landmarker, pose=None):
+    keypoints = generate_keypoints(frame, pose_landmarker)
+    if keypoints is None:
+        return frame, "No keypoints detected"
+    keypoints_norm = normalise_keypoints(keypoints)
+    if pose is None:
+        target_pose, target_prob = predict_pose(keypoints_norm)
+    else:
+        target_pose, target_prob = pose, 1
+    corrections = generate_pose_corrections(keypoints_norm, target_pose, threshold=10)
+    if corrections:
+        corrections_text = ". ".join(remove_angle_from_correction(correction) for correction in corrections.values())
+    else:
+        corrections_text = "No corrections needed"
+    annotated_image = visualise_pose_corrections(frame.copy(), keypoints, corrections, target_pose, target_prob)
+    return annotated_image, corrections_text
+
+def gen_webcam(pose_landmarker, pose=None):
+    global latest_result
+    cap = cv2.VideoCapture(0)
+    last_corrections_text = None
+    if not cap.isOpened():
+        print("Cannot open webcam")
+        return
+    while True:
+        ret, frame = cap.read()
+        if not ret:
+            break
+        timestamp_ms = int(time.time() * 1000)
+        generate_keypoints_async(frame, pose_landmarker, timestamp_ms)
+        time.sleep(0.03)
+        with result_lock:
+            keypoints = latest_result["keypoints"]
+            mp_image = latest_result["image"]
+        if keypoints is not None and mp_image is not None:
+            if keypoints and hasattr(keypoints[0], 'x'):
+                keypoints_array = np.array([[lm.x, lm.y, lm.z, lm.visibility] for lm in keypoints])
+            elif keypoints and isinstance(keypoints[0], list) and hasattr(keypoints[0][0], 'x'):
+                keypoints_array = np.array([[lm.x, lm.y, lm.z, lm.visibility] for lm in keypoints[0]])
+            else:
+                keypoints_array = None
+            keypoints_norm = normalise_keypoints(keypoints_array)
+            if pose is None:
+                target_pose, target_prob = predict_pose(keypoints_norm)
+            else:
+                target_pose, target_prob = pose, 1
+            corrections = generate_pose_corrections(keypoints_norm, target_pose, threshold=10)
+            annotated_image = visualise_pose_corrections(frame.copy(), keypoints_array, corrections, target_pose, target_prob)
+            if corrections:
+                corrections_text = ". ".join(remove_angle_from_correction(c) for c in corrections.values())
+            else:
+                corrections_text = "No corrections needed"
+            """
+            if corrections_text != last_corrections_text:
+                audio_bytes = generate_tts_audio(corrections_text)
+                audio_base64 = base64.b64encode(audio_bytes).decode("utf-8")
+                corrections_queue.put({"corrections_text": corrections_text, "corrections_audio": audio_base64})
+                last_corrections_text = corrections_text
+            """
+            img_encode = cv2.imencode(".jpg", annotated_image)[1]
+            yield (b'--frame\r\n'
+                   b'Content-Type: image/jpeg\r\n\r\n' + img_encode.tobytes() + b'\r\n')
+
+app = Flask(__name__, static_folder='static', template_folder='templates')
+
+model_path = 'models/pose_landmarker_lite.task'
+base_options = python.BaseOptions(model_asset_path=model_path)
+latest_result = {"image": None, "keypoints": None}
+result_lock = Lock()
+options = vision.PoseLandmarkerOptions(base_options=base_options, running_mode=vision.RunningMode.LIVE_STREAM, result_callback=result_callback)
+pose_landmarker = vision.PoseLandmarker.create_from_options(options)
+tts = TTS(model_name="tts_models/en/ljspeech/glow-tts", progress_bar=False)
+corrections_queue = Queue()
 
 @app.route('/')
 def index():
@@ -71,28 +126,6 @@ def pose_correction_image():
         return jsonify({"annotated_image_base64": img_encode_base64})
     except Exception as e:
         return jsonify({"error": str(e)})
-
-def gen_webcam(pose_landmarker, pose=None):
-    cap = cv2.VideoCapture(0)
-    last_corrections_text = None
-    if not cap.isOpened():
-        print("Cannot open webcam")
-        return
-    while True:
-        ret, frame = cap.read()
-        if not ret:
-            break
-        annotated_image, corrections_text = process_frame(frame, pose_landmarker, pose)
-        if corrections_text != last_corrections_text:
-            audio_bytes = generate_tts_audio(corrections_text)
-            audio_base64 = base64.b64encode(audio_bytes).decode("utf-8")
-            corrections_queue.put({"corrections_text": corrections_text, "corrections_audio": audio_base64})
-            last_corrections_text = corrections_text
-        img_encode = cv2.imencode(".jpg", annotated_image)[1]
-        image_bytes = img_encode.tobytes()
-        yield (b'--frame\r\n'
-               b'Content-Type: image/jpeg\r\n\r\n' + image_bytes + b'\r\n')
-    cap.release()
 
 @app.route('/webcam', methods=['GET'])
 def pose_correction_webcam():
@@ -166,5 +199,3 @@ def pose_correction_video():
 if __name__ == '__main__':
     from waitress import serve
     serve(app)
-
-test111

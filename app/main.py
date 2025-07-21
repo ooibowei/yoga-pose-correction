@@ -3,9 +3,10 @@ import base64
 import os
 import json
 import tempfile
-import numpy as np
 import time
 import asyncio
+import aiofiles
+import numpy as np
 from edge_tts import Communicate
 from fastapi import FastAPI, UploadFile, Request, Form, Query
 from fastapi.responses import StreamingResponse, JSONResponse, FileResponse
@@ -37,17 +38,17 @@ pose_landmarker_livestream = vision.PoseLandmarker.create_from_options(options_l
 pose_landmarker_video = vision.PoseLandmarker.create_from_options(options_video)
 pose_landmarker_image = vision.PoseLandmarker.create_from_options(options_image)
 
-def generate_tts_audio(text):
+async def generate_tts_audio_async(text):
     temp_path = tempfile.NamedTemporaryFile(suffix=".mp3", delete=False).name
     communicate = Communicate(text)
-    asyncio.run(communicate.save(temp_path))
-    with open(temp_path, "rb") as f:
-        audio = f.read()
+    await communicate.save(temp_path)
+    async with aiofiles.open(temp_path, "rb") as f:
+        audio = await f.read()
     os.remove(temp_path)
     return audio
 
 async def tts_background_task(text):
-    audio_bytes = await asyncio.to_thread(generate_tts_audio, text)
+    audio_bytes = await generate_tts_audio_async(text)
     audio_base64 = base64.b64encode(audio_bytes).decode("utf-8")
     await corrections_queue.put({"corrections_text": text, "corrections_audio": audio_base64})
 
@@ -147,9 +148,10 @@ async def pose_correction_video(file: UploadFile, pose: str = Form(None)):
         pose_landmarker_video = vision.PoseLandmarker.create_from_options(options_video)
         input_temp = tempfile.NamedTemporaryFile(delete=False, suffix=".mp4")
         input_path = input_temp.name
-        content = await file.read()
-        input_temp.write(content)
         input_temp.close()
+        content = await file.read()
+        async with aiofiles.open(input_path, "wb") as f:
+            await f.write(content)
 
         cap = cv2.VideoCapture(input_path)
         fps = cap.get(cv2.CAP_PROP_FPS)
@@ -174,8 +176,8 @@ async def pose_correction_video(file: UploadFile, pose: str = Form(None)):
         out.release()
         os.remove(input_path)
 
-        with open(output_path, 'rb') as video_file:
-            video_bytes = video_file.read()
+        async with aiofiles.open(output_path, 'rb') as video_file:
+            video_bytes = await video_file.read()
             video_base64 = base64.b64encode(video_bytes).decode("utf-8")
         os.remove(output_path)
         return {"annotated_video_base64": video_base64}

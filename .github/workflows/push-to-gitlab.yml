@@ -1,0 +1,21 @@
+name: Mirror to GitLab
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v3
+
+      - name: Push to GitLab
+        run: |
+          git config --global user.name "ooibowei"
+          git config --global user.email "ooibowei@gmail.com"
+          git remote add gitlab https://oauth2:${{ secrets.GITLAB_TOKEN }}@gitlab.com/ooibowei-group/yoga-pose-correction.git
+          git push --force gitlab main

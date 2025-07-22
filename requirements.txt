@@ -10,4 +10,5 @@ pytest==8.4.1
 pytest-asyncio==1.1.0
 pytest-mock==3.14.1
 python-multipart==0.0.20
+scikit-learn==1.7.0
 torch==2.7.1

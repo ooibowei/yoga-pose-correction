@@ -6,6 +6,7 @@ import tempfile
 import time
 import asyncio
 import aiofiles
+import threading
 import numpy as np
 from edge_tts import Communicate
 from fastapi import FastAPI, UploadFile, Request, Form, Query
@@ -22,7 +23,7 @@ app = FastAPI()
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
 
 latest_result = {"image": None, "keypoints": None}
-result_lock = asyncio.Lock()
+result_lock = threading.Lock()
 corrections_queue = asyncio.Queue()
 model_path = 'models/pose_landmarker_lite.task'
 base_options = python.BaseOptions(model_asset_path=model_path)

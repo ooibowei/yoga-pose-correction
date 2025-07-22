@@ -1,5 +1,16 @@
-# Real Time Yoga Pose Correction App
-Develop an application that uses computer vision to analyze a user's yoga poses in real time through a webcam. The app should provide instant feedback and corrections to help users align their poses correctly, based on a pre-trained model that recognizes common poses and deviations.
+# Real-Time Yoga Pose Correction App
+
+This is a real-time yoga pose correction app that detects key body joints and provides feedback for pose correction. The app supports both webcam streaming and file uploads (image/video)
+
+The app features a pipeline that extracts a user's keypoints using MediaPipe and predicts the target pose using a feedforward neural network. These keypoints are then compared against reference angles of key joints for the pose, generating visual and spoken corrections for the user
+
+The app includes a FastAPI backend using REST APIs, a lightweight HTML/JS frontend and asynchronous audio feedback using Edge TTS. It uses GitLab CI for continuous integration and is designed for local deployment 
+
+## Key Features
+
+- Pose estimation with MediaPipe
+- Feedforward Neural Network with PyTorch
+- 
 
 ## Build 3 models
 1. Pose Estimation: First, use a pose estimation model to track the keypoints of the user's body in real-time.

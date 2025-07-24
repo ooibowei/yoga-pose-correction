@@ -21,7 +21,6 @@ from scripts.utils import generate_keypoints, normalise_keypoints, generate_keyp
 
 app = FastAPI()
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
-app.mount("/output_videos", StaticFiles(directory="output_videos"), name="output_videos")
 
 latest_result = {"image": None, "keypoints": None}
 result_lock = threading.Lock()

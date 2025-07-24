@@ -21,6 +21,7 @@ from scripts.utils import generate_keypoints, normalise_keypoints, generate_keyp
 
 app = FastAPI()
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
+app.mount("/output_videos", StaticFiles(directory="output_videos"), name="output_videos")
 
 latest_result = {"image": None, "keypoints": None}
 result_lock = threading.Lock()
@@ -181,7 +182,7 @@ async def pose_correction_video(file: UploadFile, pose: str = Form(None)):
             video_bytes = await video_file.read()
             video_base64 = base64.b64encode(video_bytes).decode("utf-8")
         os.remove(output_path)
-        return {"annotated_video_base64": video_base64}
+        return JSONResponse({"annotated_video_base64": video_base64})
 
     except Exception as e:
         return JSONResponse({'error': str(e)})

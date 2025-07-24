@@ -2,7 +2,6 @@ image: python:3.12-slim
 
 stages:
   - test
-  - build
 
 variables:
   PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
@@ -19,8 +18,3 @@ test:
   stage: test
   script:
     - pytest
-
-build:
-  stage: build
-  script:
-    - echo "Build steps"

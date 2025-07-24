@@ -44,6 +44,8 @@ The app includes a FastAPI backend using REST APIs, a lightweight HTML/JS fronte
 ## Demo
 
 ![Pose Correction Demo](reports/images/warrior2_video_gif.gif)
+
+![Web Interface](reports/images/web_interface.png)
 --- 
 ## Installation
 ```bash

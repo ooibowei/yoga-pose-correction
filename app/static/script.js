@@ -1,5 +1,6 @@
 document.addEventListener("DOMContentLoaded", function(){
     let audioSource = null;
+    let currentVideoFilename = null;
     const inputType = document.getElementById("input-type");
     const uploadSection = document.getElementById("upload-section");
     const webcamSection = document.getElementById("webcam-section");
@@ -9,8 +10,22 @@ document.addEventListener("DOMContentLoaded", function(){
     const webcamStream = document.getElementById("webcam-stream");
     const resultSection = document.getElementById("result-section");
 
+    async function deletePreviousVideo() {
+        if (currentVideoFilename) {
+            const filenameToDelete = currentVideoFilename;
+            currentVideoFilename = null;
+            try {
+                await fetch(`/video?filename=${encodeURIComponent(filenameToDelete)}`, { method: "DELETE" });
+                console.log("Deleted previous video:", filenameToDelete);
+            } catch (err) {
+                console.error("Failed to delete previous video:", err);
+            }
+        }
+    }
+
     // Update UI based on input type
     function updateUI() {
+        deletePreviousVideo();
         const type = inputType.value;
         if (type !== "webcam") {
             webcamStream.src = "";
@@ -47,6 +62,7 @@ document.addEventListener("DOMContentLoaded", function(){
     updateUI();
 
     poseInput.addEventListener("change", async () => {
+        deletePreviousVideo();
         const file = fileInput.files[0];
         const type = inputType.value;
         if (type === "webcam") {
@@ -57,7 +73,10 @@ document.addEventListener("DOMContentLoaded", function(){
         }
     });
 
-    // Upload
+    window.addEventListener("beforeunload", () => {
+        deletePreviousVideo();
+    });
+
     async function uploadCurrentFileWithPose() {
         const type = inputType.value;
         const file = fileInput.files[0];
@@ -95,17 +114,19 @@ document.addEventListener("DOMContentLoaded", function(){
             const video = document.createElement("video");
             video.controls = true;
             video.playsInline = true;
-            video.src = "data:video/mp4;base64," + data.annotated_video_base64;
+            video.src = data.video_url + "?t=" + new Date().getTime();
+            currentVideoFilename = data.video_url.split('/').pop();
             resultSection.appendChild(video);
+            video.load();
         }
         uploadButton.disabled = false;
     }
     uploadButton.addEventListener("click", async (event) => {
         event.preventDefault();
+        deletePreviousVideo();
         uploadCurrentFileWithPose();
     });
 
-    // Webcam video and audio
     function startWebcamStream() {
         if (webcamStream.src) {
             webcamStream.src = "";

@@ -158,9 +158,8 @@ async def pose_correction_video(file: UploadFile, pose: str = Form(None)):
         fps = cap.get(cv2.CAP_PROP_FPS)
         width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
         height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-        output_temp = tempfile.NamedTemporaryFile(delete=False, suffix=".mp4")
-        output_path = output_temp.name
-        output_temp.close()
+        output_filename = f"processed_{int(time.time())}.mp4"
+        output_path = f"app/static/processed/{output_filename}"
         fourcc = cv2.VideoWriter_fourcc(*'avc1')
         out = cv2.VideoWriter(output_path, fourcc, fps, (width, height))
 
@@ -176,15 +175,22 @@ async def pose_correction_video(file: UploadFile, pose: str = Form(None)):
         cap.release()
         out.release()
         os.remove(input_path)
-
-        async with aiofiles.open(output_path, 'rb') as video_file:
-            video_bytes = await video_file.read()
-            video_base64 = base64.b64encode(video_bytes).decode("utf-8")
-        os.remove(output_path)
-        return JSONResponse({"annotated_video_base64": video_base64})
+        return JSONResponse({"video_url": f"/static/processed/{output_filename}"})
 
     except Exception as e:
         return JSONResponse({'error': str(e)})
+
+@app.delete("/video")
+async def delete_video(filename: str = Query(...)):
+    try:
+        filepath = os.path.join("app/static/processed", filename)
+        if os.path.exists(filepath):
+            os.remove(filepath)
+            return {"status": "deleted"}
+        else:
+            return {"status": "file not found"}
+    except Exception as e:
+        return {"error": str(e)}
 
 @app.get('/webcam')
 async def pose_correction_webcam(request: Request, pose: str = Query(None)):
